@@ -13110,6 +13110,27 @@ var VM = {
         expr = state.instr === 1382 ? "0" : "1";
       }
 
+      // HACK FOR OSP 1.03a
+      // OSP validates its pak files at startup (qagame) and checks its client cgame
+      // is present and correct size. We repackage assets so both checks must be bypassed.
+      //
+      // qagame pak-check loop (6 pairs of GTI + NE, all from FS_FOpenFile calls):
+      //   GTI instrs: file-found checks - forcing "0" prevents jump to error block
+      //   NE instrs:  file-size checks  - all branch to same error handler at instr 38408
+      //                                   forcing "0" prevents that branch
+      if (
+        fs_game === "osp" &&
+        name === "qagame" &&
+        (state.instr === 244233 || state.instr === 244239 ||
+         state.instr === 247043 || state.instr === 247049 ||
+         state.instr === 247576 || state.instr === 247582 ||
+         state.instr === 269836 || state.instr === 269842 ||
+         state.instr === 280791 || state.instr === 280797 ||
+         state.instr === 291946 || state.instr === 291952)
+      ) {
+        expr = "0";
+      }
+
       EmitStatement("if (" + expr + ") {");
       indent++;
       EmitJump(label);
