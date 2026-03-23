@@ -9974,9 +9974,11 @@ var SYSC = {
       }
 
       if (!asset) {
-        return callback(
-          new Error('Failed to find "' + installer.name + '" in manifest')
-        );
+        // PATCH(demo): installer name not in manifest - skip it gracefully.
+        // Original code called `callback(err)` here but DirtyInstallers takes
+        // no callback parameter, causing: ReferenceError: callback is not defined
+        console.warn('[Q3JS] Installer "' + installer.name + '" not in manifest, skipping.');
+        continue;
       }
 
       if (!SYSC.ValidateInstaller(installer)) {
@@ -10018,6 +10020,13 @@ var SYSC = {
     nextEntry();
   },
   SyncInstallers: function (callback) {
+    // PATCH(retail): if Q3JS_CONTENT_TYPE=retail, pak files are already
+    // mounted by the user. Skip the demo-installer download entirely so
+    // we never overwrite retail pak0.pk3 with the demo version.
+    if (process.env.Q3JS_CONTENT_TYPE === 'retail') {
+      console.log('[Q3JS] retail mode: skipping demo installer download.');
+      return callback();
+    }
     var downloads = SYSC.DirtyInstallers();
     if (!downloads.length) {
       return callback();
