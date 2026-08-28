@@ -73290,13 +73290,27 @@ var asm = (function (global, env, buffer) {
       return;
     }
     if ((c[33783] | 0) >= ((2147483646 - (c[33782] | 0)) | 0)) {
-      Ig(31432);
-      a = fk(43120) | 0;
-      k = Hn(31808, ((n = i), (i = (i + 8) | 0), (c[n >> 2] = a), n) | 0) | 0;
-      i = n;
-      Ai(k);
-      i = b;
-      return;
+      /* q3js patch: rebase snapshot indices instead of restarting the map */
+      (function () {
+        var num = c[33782] | 0;
+        if (num > 0) {
+          var next = c[33783] | 0;
+          var kk = ((next / num) | 0) - 2;
+          if (kk > 0) {
+            var reb = (kk * num) | 0;
+            c[33783] = (next - reb) | 0;
+            var mc = c[((c[64874] | 0) + 32) >> 2] | 0;
+            var base = c[33781] | 0;
+            for (var ci = 0; ci < mc; ci++) {
+              var fr = (base + (ci * 121936) + 68188) | 0;
+              for (var fi = 0; fi < 32; fi++) {
+                var fp = (fr + (fi * 524) + 508) | 0;
+                c[fp >> 2] = ((c[fp >> 2] | 0) - reb) | 0;
+              }
+            }
+          }
+        }
+      })();
     }
     k = c[142751] | 0;
     if (!(((k | 0) == 0) | ((c[142752] | 0) < (k | 0)))) {
