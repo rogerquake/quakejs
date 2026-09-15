@@ -72,37 +72,16 @@
 			while (match = search.exec(query)) {
 				var val = decodeURIComponent(match[1]);
 				val = val.split(" ");
+				// "maxfps N" is handled by the JS main loop, not the engine console.
+				if (val[0] === "maxfps") {
+					window.Q3JS_MAX_FPS = parseInt(val[1], 10) || 0;
+					continue;
+				}
 				val[0] = "+" + val[0];
 				args.push.apply(args, val);
 			}
 
 			return args;
-		}
-
-		function getCookie(key) {
-			const cookies = document.cookie.split("; ");
-			for (let cookie of cookies) {
-				let [cookieKey, cookieValue] = cookie.split("=");
-				if (cookieKey === key) {
-					return decodeURIComponent(cookieValue);
-				}
-			}
-			return null;
-		}
-
-		function setCookie(key, value, days) {
-			let expires = "";
-			if (days) {
-				let date = new Date();
-				date.setTime(date.getTime() + days * 24 * 60 * 60 * 1000);
-				expires = "; expires=" + date.toUTCString();
-			}
-			document.cookie = key + "=" + encodeURIComponent(value) + expires + "; path=/";
-		}
-
-		function getRandomItem(arr) {
-			const randomIndex = Math.floor(Math.random() * arr.length);
-			return arr[randomIndex];
 		}
 
 		window.onload = function () {
@@ -128,36 +107,39 @@
 			window.addEventListener("resize", resizeViewport);
 
 			// merge default args with query string args
-			var args = [ "+set", "fs_cdn", "<%= content %>", "+set", "sv_master1", "<%= master %>" ];
-			args.push.apply( args, getQueryCommands() );
+			// name, connect, team etc. are passed via URL params by the HA card
+			var args = ["+set", "fs_cdn", "<%= content %>", "+set", "sv_master1", "<%= master %>"];
+			args.push.apply(args, ["+set", "cl_q3confirmed", "1"]);
+            args.push.apply(args, getQueryCommands());
 
-			let username = getCookie( "username" )
-			if (!username) {
-				username = prompt(
-					"Please enter your nickname",
-					getRandomItem( [
-						"Gordon Freeman", "Alyx Vance",
-						"Eli Vance", "Isaac Kleiner",
-						"Barney Calhoun", "Judith Mossman",
-						"Wallace Breen", "Father Grigori",
-						"Leon", "Odessa Cubbage", "G-Man",
-						"Wallace Breen"
-					] )
-				);
+			// uncomment the following line to connect all clients to a specific server automatically
+            // args.push.apply( args, [ "+connect", "q3js.changeme.com:27961" ] )
 
-				if (!username) {
-					window.location.reload();
+			ioq3.callMain( args );
+
+			// Accept volume/mute commands from the Home Assistant card (cross-origin parent).
+			// Uses the engine's exported Cvar_Set — no reload, no reconnect.
+			window.addEventListener("message", function (event) {
+				var d = event.data;
+				if (!d) return;
+				if (d.q3js === "maxfps") {
+					window.Q3JS_MAX_FPS = parseInt(d.value, 10) || 0;
 					return;
 				}
-
-				setCookie( "username", username, 30 );
-
-				args.push.apply(args, [ "+s_volume", "0.05" ] );
-				args.push.apply(args, [ "+s_musicvolume", "0.01" ] );
-			}
-
-			args.push.apply( args, [ "+name", username ] );
-			ioq3.callMain( args );
+				if (d.q3js !== "volume") return;
+				try {
+					if (typeof d.s_volume !== "undefined") {
+						ioq3.ccall("Cvar_Set", null, ["string", "string"],
+							["s_volume", String(d.s_volume)]);
+					}
+					if (typeof d.s_musicvolume !== "undefined") {
+						ioq3.ccall("Cvar_Set", null, ["string", "string"],
+							["s_musicvolume", String(d.s_musicvolume)]);
+					}
+				} catch (e) {
+					console.warn("q3js: volume message failed", e);
+				}
+			});
 		};
 	</script>
 	<script type="text/javascript" src="<%= ioquake3js %>"></script>
