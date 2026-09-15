@@ -24132,8 +24132,15 @@ function _emscripten_set_main_loop(func, fps, simulateInfiniteLoop) {
     };
     Browser.mainLoop.method = "timeout";
   } else {
+    /* q3js patch: allow unlocking the main loop from display refresh.
+       window.Q3JS_MAX_FPS = 0/unset -> rAF (stock); N > 0 -> setTimeout. */
     Browser.mainLoop.scheduler = function Browser_mainLoop_scheduler() {
-      Browser.requestAnimationFrame(Browser.mainLoop.runner);
+      var q3fps = (typeof window !== "undefined" && window.Q3JS_MAX_FPS) | 0;
+      if (q3fps > 0) {
+        setTimeout(Browser.mainLoop.runner, 1000 / q3fps);
+      } else {
+        Browser.requestAnimationFrame(Browser.mainLoop.runner);
+      }
     };
     Browser.mainLoop.method = "rAF";
   }
